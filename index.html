@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>кт4</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Фейковый API и Чат</h1>
+        
+        <div class="buttons">
+            <button onclick="loadData('users')">Пользователи</button>
+            <button onclick="loadData('posts')">Посты</button>
+        </div>
+        
+        <div id="output">API данные появятся здесь...</div>
+        
+        <div class="chat-container">
+            <h2>Чат</h2>
+            <div id="chat">Сообщения будут отображаться здесь...</div>
+            <input id="messageInput" type="text" placeholder="Введите сообщение">
+            <button id="sendMessage">Отправить</button>
+        </div>
+        
+        <div id="updates">Обновления с сервера...</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        function loadData(endpoint) {
+            fetch(`https://jsonplaceholder.typicode.com/${endpoint}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Ошибка загрузки данных');
+                    return response.json();
+                })
+                .then(data => displayData(data))
+                .catch(error => {
+                    document.getElementById('output').innerHTML = 'Ошибка: ' + error.message;
+                    console.error('Ошибка при загрузке:', error);
+                });
+        }
+
+        function displayData(data) {
+            const output = document.getElementById('output');
+            output.innerHTML = JSON.stringify(data, null, 2);
+        }
+
+        const socket = io();
+        document.getElementById('sendMessage').onclick = () => {
+
+const message = document.getElementById('messageInput').value;
+            if (message) {
+                socket.emit('chat message', message);
+                document.getElementById('messageInput').value = '';
+            }
+        };
+        socket.on('chat message', msg => {
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<p>${msg}</p>`;
+            chat.scrollTop = chat.scrollHeight;
+        });
+
+        const eventSource = new EventSource('/events');
+        eventSource.onmessage = event => {
+            const updates = document.getElementById('updates');
+            updates.innerHTML += `<p>Обновление: ${event.data}</p>`;
+        };
+
+        socket.on('connect_error', () => {
+            console.error('Ошибка подключения к WebSocket');
+        });
+
+        eventSource.onerror = () => {
+            console.error('Ошибка получения обновлений через Server-Sent Events');
+        };
+    </script>
+</body>
+</html>
